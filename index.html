@@ -1,0 +1,411 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>⚡ Riflessi Estremi</title>
+  <style>
+    * { box-sizing: border-box; }
+    body{
+      margin:0;
+      min-height:100vh;
+      font-family:'Comic Sans MS', cursive, sans-serif;
+      background: radial-gradient(circle at top, #2c3e50, #111827 72%);
+      color:#fff;
+      display:flex;
+      align-items:center;
+      justify-content:center;
+      overflow:hidden;
+    }
+    .app{
+      width:min(980px, calc(100vw - 24px));
+      background:rgba(15, 23, 42, 0.84);
+      border:2px solid rgba(255,255,255,.12);
+      border-radius:28px;
+      padding:24px;
+      box-shadow:0 18px 50px rgba(0,0,0,.35);
+      backdrop-filter: blur(10px);
+      position:relative;
+      transition: box-shadow .12s ease;
+    }
+    .app.shake{
+      animation: shake .22s ease;
+    }
+    @keyframes shake{
+      0%{ transform:translate(0,0); }
+      20%{ transform:translate(-8px,4px); }
+      40%{ transform:translate(7px,-5px); }
+      60%{ transform:translate(-6px,-3px); }
+      80%{ transform:translate(5px,4px); }
+      100%{ transform:translate(0,0); }
+    }
+    .app.flashDanger{
+      box-shadow:0 0 0 6px rgba(231,76,60,.55), 0 18px 50px rgba(0,0,0,.35);
+    }
+
+    h1{
+      margin:0 0 8px;
+      text-align:center;
+      font-size:clamp(2rem, 4vw, 3.2rem);
+      color:#f1c40f;
+      text-shadow:0 2px 0 rgba(0,0,0,.35);
+    }
+    .subtitle{
+      text-align:center;
+      margin:0 0 18px;
+      opacity:.9;
+      line-height:1.5;
+    }
+    .topbar{
+      display:flex;
+      flex-wrap:wrap;
+      gap:10px;
+      justify-content:center;
+      margin-bottom:16px;
+    }
+    .btn{
+      border:0;
+      border-radius:14px;
+      padding:12px 18px;
+      font:inherit;
+      font-weight:700;
+      cursor:pointer;
+      color:white;
+      background:#34495e;
+      transition:transform .15s ease, background .15s ease, box-shadow .15s ease;
+      box-shadow:0 8px 18px rgba(0,0,0,.18);
+    }
+    .btn:hover{ transform:translateY(-2px); background:#2ecc71; }
+    .btn:active{ transform:translateY(1px) scale(.98); }
+    .btn.secondary{ background:#8e44ad; }
+    .btn.secondary:hover{ background:#9b59b6; }
+
+    .scoreboard{
+      display:flex;
+      gap:12px;
+      justify-content:space-between;
+      flex-wrap:wrap;
+      margin-bottom:14px;
+      font-size:1rem;
+    }
+    .pill{
+      background:rgba(255,255,255,.08);
+      border:1px solid rgba(255,255,255,.12);
+      border-radius:999px;
+      padding:10px 14px;
+      min-width:130px;
+      text-align:center;
+    }
+    .lives{ letter-spacing:2px; }
+
+    .screen{ display:none; }
+    .screen.show{ display:block; }
+
+    .playfield{
+      position:relative;
+      width:100%;
+      height:min(62vh,520px);
+      border-radius:22px;
+      border:2px dashed rgba(255,255,255,0.14);
+      background:linear-gradient(180deg, rgba(255,255,255,.05), rgba(255,255,255,.02));
+      overflow:hidden;
+    }
+
+    .stim{
+      position:absolute;
+      border:none;
+      border-radius:50%;
+      cursor:pointer;
+      display:flex;
+      align-items:center;
+      justify-content:center;
+      font-size:2rem;
+      user-select:none;
+      box-shadow:0 10px 24px rgba(0,0,0,.3);
+      animation: pop-in .1s ease;
+    }
+    @keyframes pop-in{
+      from{ transform:scale(.4); opacity:0; }
+      to{ transform:scale(1); opacity:1; }
+    }
+    .stim.good{ background:radial-gradient(circle at 35% 30%, #58e08a, #1fa855); }
+    .stim.bad{ background:radial-gradient(circle at 35% 30%, #ff8b7a, #d6392a); }
+    .stim.gone{
+      animation: pop-out .12s ease forwards;
+      pointer-events:none;
+    }
+    @keyframes pop-out{
+      to{ transform:scale(.3); opacity:0; }
+    }
+
+    .message{
+      text-align:center;
+      margin-top:14px;
+      min-height:1.5em;
+      font-weight:700;
+      line-height:1.4;
+    }
+    .footer{
+      margin-top:14px;
+      text-align:center;
+      opacity:.85;
+      font-size:.95rem;
+    }
+
+    .game-end{
+      text-align:center;
+      padding:22px 10px 6px;
+    }
+    .result{
+      font-size:clamp(1.4rem, 3vw, 2.3rem);
+      margin:10px 0 6px;
+      color:#f1c40f;
+    }
+
+    @media (max-width:640px){
+      .app{ padding:16px; border-radius:20px; }
+      .pill{ min-width: calc(50% - 6px); }
+    }
+  </style>
+</head>
+<body>
+  <main class="app" id="app">
+    <section id="homeScreen" class="screen show">
+      <h1>⚡ Riflessi Estremi</h1>
+      <p class="subtitle">Clicca solo i cerchi verdi ⚡, appena appaiono. Evita quelli rossi 💥.<br>Hai 3 vite: sbagliare o essere troppo lento te ne costa una. Sopravvivi il più a lungo possibile: la velocità cresce senza sosta.</p>
+
+      <div class="topbar">
+        <button class="btn" id="startBtn">Gioca</button>
+        <button class="btn secondary" id="resetBtn">Reset</button>
+        <button class="btn" id="commentsBtn">Commenti</button>
+        <button class="btn" id="funBtn">fun.games</button>
+      </div>
+
+      <div class="game-end">
+        <div class="result">Un attimo di distrazione e sei fuori.</div>
+        <p class="footer">Modalità sopravvivenza: niente round fissi, solo velocità crescente.</p>
+      </div>
+    </section>
+
+    <section id="gameScreen" class="screen">
+      <h1>⚡ Riflessi Estremi</h1>
+      <div class="scoreboard">
+        <div class="pill">Punti: <span id="score">0</span></div>
+        <div class="pill">Vite: <span id="lives" class="lives">❤️❤️❤️</span></div>
+        <div class="pill">Velocità: <span id="speedLevel">1</span>x</div>
+      </div>
+
+      <div class="topbar">
+        <button class="btn secondary" id="backBtn">⬅ Torna alla home</button>
+      </div>
+
+      <div class="playfield" id="playfield" aria-label="Area di gioco"></div>
+      <div class="message" id="message">Clicca solo i cerchi verdi, appena appaiono!</div>
+      <div class="footer">Ogni punto accelera il gioco: reggi il ritmo finché puoi.</div>
+    </section>
+
+    <section id="endScreen" class="screen">
+      <h1>⚡ Riflessi Estremi</h1>
+      <div class="game-end">
+        <div class="result" id="finalScore">Hai totalizzato 0 punti!</div>
+        <p class="subtitle" id="finalMessage">I tuoi riflessi ti hanno tradito.</p>
+        <div class="topbar">
+          <button class="btn" id="playAgainBtn">Gioca ancora</button>
+          <button class="btn secondary" id="backHomeBtn">Torna alla home</button>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <script>
+    const appEl = document.getElementById('app');
+    const homeScreen = document.getElementById('homeScreen');
+    const gameScreen = document.getElementById('gameScreen');
+    const endScreen = document.getElementById('endScreen');
+
+    const startBtn = document.getElementById('startBtn');
+    const resetBtn = document.getElementById('resetBtn');
+    const commentsBtn = document.getElementById('commentsBtn');
+    const funBtn = document.getElementById('funBtn');
+    const backBtn = document.getElementById('backBtn');
+    const playAgainBtn = document.getElementById('playAgainBtn');
+    const backHomeBtn = document.getElementById('backHomeBtn');
+
+    const scoreEl = document.getElementById('score');
+    const livesEl = document.getElementById('lives');
+    const speedLevelEl = document.getElementById('speedLevel');
+    const messageEl = document.getElementById('message');
+    const finalScore = document.getElementById('finalScore');
+    const finalMessage = document.getElementById('finalMessage');
+    const playfield = document.getElementById('playfield');
+
+    let score = 0;
+    let lives = 3;
+    let running = false;
+    let spawnTimer = null;
+    let currentStim = null;
+
+    function showScreen(screen) {
+      homeScreen.classList.remove('show');
+      gameScreen.classList.remove('show');
+      endScreen.classList.remove('show');
+      screen.classList.add('show');
+    }
+
+    function updateUI() {
+      scoreEl.textContent = score;
+      livesEl.textContent = '❤️'.repeat(Math.max(0, lives)) + '🖤'.repeat(Math.max(0, 3 - lives));
+      const level = 1 + Math.floor(score / 5);
+      speedLevelEl.textContent = level;
+    }
+
+    function flashDanger() {
+      appEl.classList.add('flashDanger', 'shake');
+      setTimeout(() => appEl.classList.remove('flashDanger', 'shake'), 220);
+    }
+
+    function loseLife(reason) {
+      lives -= 1;
+      flashDanger();
+      messageEl.textContent = reason;
+      updateUI();
+      if (lives <= 0) {
+        endGame();
+      }
+    }
+
+    function currentLifeMs() {
+      return Math.max(260, 950 - score * 25);
+    }
+
+    function currentGapMs() {
+      return Math.max(180, 500 - score * 12);
+    }
+
+    function clearCurrentStim() {
+      if (currentStim && currentStim.el.parentNode) {
+        currentStim.el.remove();
+      }
+      currentStim = null;
+    }
+
+    function spawnStim() {
+      if (!running) return;
+      clearCurrentStim();
+
+      const size = Math.max(46, 84 - Math.floor(score / 3) * 3);
+      const isBad = Math.random() < Math.min(0.25 + score * 0.01, 0.45);
+
+      const el = document.createElement('button');
+      el.type = 'button';
+      el.className = 'stim ' + (isBad ? 'bad' : 'good');
+      el.style.width = size + 'px';
+      el.style.height = size + 'px';
+      el.textContent = isBad ? '💥' : '⚡';
+      el.setAttribute('aria-label', isBad ? 'Non cliccare' : 'Clicca subito');
+
+      const maxX = Math.max(8, playfield.clientWidth - size - 6);
+      const maxY = Math.max(8, playfield.clientHeight - size - 6);
+      el.style.left = Math.floor(Math.random() * maxX) + 'px';
+      el.style.top = Math.floor(Math.random() * maxY) + 'px';
+
+      const lifeMs = currentLifeMs();
+      let resolved = false;
+
+      const timeoutId = setTimeout(() => {
+        if (resolved) return;
+        resolved = true;
+        el.classList.add('gone');
+        if (!isBad) {
+          loseLife('Troppo lento! Il bersaglio è sparito.');
+        }
+        setTimeout(() => {
+          el.remove();
+          if (running) scheduleNext();
+        }, 130);
+      }, lifeMs);
+
+      el.addEventListener('click', () => {
+        if (!running || resolved) return;
+        resolved = true;
+        clearTimeout(timeoutId);
+        el.classList.add('gone');
+
+        if (isBad) {
+          loseLife('Era un bersaglio da evitare!');
+        } else {
+          score += 1;
+          messageEl.textContent = 'Colpito!';
+          updateUI();
+        }
+
+        setTimeout(() => {
+          el.remove();
+          if (running) scheduleNext();
+        }, 130);
+      });
+
+      playfield.appendChild(el);
+      currentStim = { el, timeoutId };
+    }
+
+    function scheduleNext() {
+      clearTimeout(spawnTimer);
+      spawnTimer = setTimeout(spawnStim, currentGapMs());
+    }
+
+    function startGame() {
+      score = 0;
+      lives = 3;
+      running = true;
+      updateUI();
+      messageEl.textContent = 'Preparati... via!';
+      playfield.innerHTML = '';
+      showScreen(gameScreen);
+      spawnStim();
+    }
+
+    function stopTimers() {
+      clearTimeout(spawnTimer);
+      if (currentStim) clearTimeout(currentStim.timeoutId);
+    }
+
+    function resetGame() {
+      running = false;
+      stopTimers();
+      score = 0;
+      lives = 3;
+      playfield.innerHTML = '';
+      updateUI();
+      messageEl.textContent = 'Clicca solo i cerchi verdi, appena appaiono!';
+      showScreen(homeScreen);
+    }
+
+    function endGame() {
+      running = false;
+      stopTimers();
+      playfield.innerHTML = '';
+      finalScore.textContent = 'Hai totalizzato ' + score + ' punti!';
+      if (score < 8) {
+        finalMessage.textContent = 'I tuoi riflessi hanno bisogno di allenamento.';
+      } else if (score < 20) {
+        finalMessage.textContent = 'Ottimi riflessi! Hai retto un bel ritmo.';
+      } else {
+        finalMessage.textContent = 'Fenomenale! Riflessi da fulmine assoluto.';
+      }
+      showScreen(endScreen);
+    }
+
+    startBtn.addEventListener('click', startGame);
+    playAgainBtn.addEventListener('click', startGame);
+    resetBtn.addEventListener('click', resetGame);
+    backBtn.addEventListener('click', resetGame);
+    backHomeBtn.addEventListener('click', resetGame);
+    commentsBtn.addEventListener('click', () => window.open('https://github.com/wmichaeljackson/riflessi-estremi/discussions/1', '_blank'));
+    funBtn.addEventListener('click', () => location.href = 'https://wmichaeljackson.github.io/fun.games/');
+
+    updateUI();
+    showScreen(homeScreen);
+  </script>
+</body>
+</html>
